@@ -1,0 +1,4 @@
+.venv
+app/models/*
+report.csv
+company.csv
