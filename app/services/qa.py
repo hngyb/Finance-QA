@@ -2,47 +2,79 @@ from numpy.core.fromnumeric import argmax
 import torch
 from transformers import AlbertForQuestionAnswering
 from app.models.tokenization_kbalbert import KbAlbertCharTokenizer
+from collections import OrderedDict
 
 MODEL_PATH = "app/models"
 
-tokenizer = KbAlbertCharTokenizer.from_pretrained(MODEL_PATH)  
+tokenizer = KbAlbertCharTokenizer.from_pretrained(MODEL_PATH)
 model = AlbertForQuestionAnswering.from_pretrained(MODEL_PATH)
+
 
 class FinanceQA:
     def __init__(self, model: model, tokenizer: tokenizer):
         self.model = model
         self.tokenizer = tokenizer
-        self.inputs = None
-        self.sentence_embedding = None
-        self.tokens = None
+        self.max_len = self.model.config.max_position_embeddings
+        self.chunked = False
 
-    def tokenize(self, question, context):
-        encoding = self.tokenizer.encode_plus(text=question, text_pair=context)
-        self.inputs = encoding['input_ids'] # Token embeddings
-        self.sentence_embedding = encoding['token_type_ids'] # Segment embeddings
-        self.tokens = self.tokenizer.convert_ids_to_tokens(self.inputs) # Input tokens
+    def tokenize(self, question, text):
+        self.inputs = self.tokenizer.encode_plus(
+            question, text, add_special_tokens=True, return_tensors="pt")
+        self.input_ids = self.inputs["input_ids"].tolist()[0]
 
-    def get_answer(self, question, context):
-        self.tokenize(question, context)
-        
-        start_scores, end_scores = self.model(input_ids=torch.tensor([self.inputs]), 
-        token_type_ids=torch.tensor([self.sentence_embedding]))
-        start_index = torch.argmax(start_scores)
-        end_index = torch.argmax(end_scores)
+        if len(self.input_ids) > self.max_len:
+            self.inputs = self.chunkify()
+            self.chunked = True
 
-        answer = ' '.join(self.tokens[start_index:end_index+1])
-        corrected_answer = ''
-        for word in answer.split():
-            if word[0:2] == '##':
-                corrected_answer += word[2:]
-            else:
-                corrected_answer += ' ' + word
-        
-        return corrected_answer
-    
+    def chunkify(self):
+        qmask = self.inputs['token_type_ids'].lt(1)
+        qt = torch.masked_select(self.inputs['input_ids'], qmask)
+        chunk_size = self.max_len - qt.size()[0] - 1
+        chunked_input = OrderedDict()
+        for k, v in self.inputs.items():
+            q = torch.masked_select(v, qmask)
+            c = torch.masked_select(v, ~qmask)
+            chunks = torch.split(c, chunk_size)
+
+            for i, chunk in enumerate(chunks):
+                if i not in chunked_input:
+                    chunked_input[i] = {}
+
+                thing = torch.cat((q, chunk))
+                if i != len(chunks)-1:
+                    if k == 'input_ids':
+                        thing = torch.cat((thing, torch.tensor([102])))
+                    else:
+                        thing = torch.cat((thing, torch.tensor([1])))
+
+                chunked_input[i][k] = torch.unsqueeze(thing, dim=0)
+        return chunked_input
+
+    def get_answer(self):
+        if self.chunked:
+            answer = ''
+            for k, chunk in self.inputs.items():
+                answer_start_scores, answer_end_scores = self.model(**chunk)
+
+                answer_start = torch.argmax(answer_start_scores)
+                answer_end = torch.argmax(answer_end_scores) + 1
+
+                ans = self.convert_ids_to_string(
+                    chunk['input_ids'][0][answer_start:answer_end])
+                if ans != '[CLS]':
+                    answer += ans + " / "
+            return answer
+        else:
+            answer_start_scores, answer_end_scores = self.model(**self.inputs)
+
+            answer_start = torch.argmax(answer_start_scores)
+            answer_end = torch.argmax(answer_end_scores) + 1
+
+            return self.convert_ids_to_string(self.inputs['input_ids'][0][
+                answer_start:answer_end])
+
+    def convert_ids_to_string(self, input_ids):
+        return self.tokenizer.convert_tokens_to_string(self.tokenizer.convert_ids_to_tokens(input_ids))
+
 
 QAModel = FinanceQA(model, tokenizer)
-
-
-
-
