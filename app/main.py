@@ -25,8 +25,6 @@ def create_app():
     app.include_router(question.router)
 
     view = View()
-    # compareRP = Compare()
-    # compareRP.get_report("005930")
     app.mount("/view", FastAPI(routes=webio_routes(view.webio)))
     return app
 

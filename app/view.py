@@ -12,14 +12,19 @@ import requests, json
 
 
 class View:
-    def __init__(self): # 디비 접근 분리 필요
-        company_dict = {"company_name":[], "stock_code":[]}
-        self.sess = next(db.session())
-        for data in company.get_all_companies(self.sess):
-            company_dict[data.company_name] = data.stock_code
-    
+    def __init__(self):
+        company_dict = {}
         self.companies = company_dict
-
+        self.sess = next(db.session())
+    
+    def get_companies(self):
+        headers = {'accept': 'application/json'}
+        res = requests.get("http://127.0.0.1:8000/api/companies", headers=headers)
+        res = json.loads(res.text)
+        for data in res:
+            print(data)
+            self.companies[data['company_name']] = data['stock_code']
+        
     def check_name(self, input_qa):
         if input_qa['name'] not in list(self.companies.keys()):
             return('name', '존재하지 않는 종목명입니다.')
@@ -56,6 +61,7 @@ class View:
             time.sleep(0.1)
 
     def webio(self):
+        self.get_companies()
         more = True
         
         while(more):

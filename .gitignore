@@ -3,3 +3,5 @@ app/models/*
 report.csv
 company.csv
 app/database/PDF
+app/.DS_Store
+app/common/const.py

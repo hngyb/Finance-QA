@@ -1,5 +1,6 @@
 from dataclasses import dataclass, asdict
 from os import path, environ
+import app.common.const as const
 
 base_dir = path.dirname(path.dirname(path.dirname(path.abspath(__file__))))
 
@@ -18,7 +19,7 @@ class Config:
 @dataclass
 class LocalConfig(Config): 
     PROJ_RELOAD: bool = True
-    DB_URL: str = "mysql+pymysql://root:3611@localhost/qa_api?charset=utf8"
+    DB_URL: str = const.DB_URL
 
 
 @dataclass
