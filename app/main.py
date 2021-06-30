@@ -9,6 +9,7 @@ from app.common.config import conf
 from app.routes import index, question
 
 from app.view import View
+from app.services.compare import Compare
 
 def create_app():
     """
@@ -24,6 +25,8 @@ def create_app():
     app.include_router(question.router)
 
     view = View()
+    # compareRP = Compare()
+    # compareRP.get_report("005930")
     app.mount("/view", FastAPI(routes=webio_routes(view.webio)))
     return app
 

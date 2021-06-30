@@ -10,10 +10,13 @@ from selenium import webdriver
 from app.database.conn import db
 import app.database.report as report
 
+
+
+
 DRIVER_PATH = 'app/chromedriver'
 
-class CompareRP:
-    def __init__(self):
+class Compare:
+    def __init__(self, db):
         self.sess = next(db.session())
         self.contents = None
     
@@ -24,7 +27,7 @@ class CompareRP:
         """
         options = webdriver.ChromeOptions()
         profile = {"plugins.plugins_list": [{"enabled": False, "name": "Chrome PDF Viewer"}],
-                    "download.default_directory": os.getcwd() + '\\app\\database\\PDF',
+                    "download.default_directory": os.getcwd() + '/app/database/PDF',
                     "download.prompt_for_download": False,
                     "plugins.always_open_pdf_externally": True,
                     "download.extensions_to_open": "applications/pdf"}
@@ -40,7 +43,7 @@ class CompareRP:
         최신 REPORT 형식 변환 함수(PDF -> HTML)
         :return:
         """
-        self.contents = parser.from_file(os.getcwd() + f'\\app\\database\\PDF\\{filename}.pdf')['content'].strip()
+        self.contents = parser.from_file(os.getcwd() + f'/app/database/PDF/{filename}.pdf')['content'].strip()
         self.contents = re.sub('([a-zA-Zㄱ-ㅎ가-힣])(\n\n)([a-zA-Zㄱ-ㅎ가-힣])', '\\1\\3', self.contents)
         self.contents = re.sub('(\s)(\n\n)([a-zA-Zㄱ-ㅎ가-힣])', ' \\3', self.contents)
         self.contents = re.sub('[\n ]{4,}', '\n', self.contents)
@@ -66,6 +69,7 @@ class CompareRP:
                     company = re.search('(.*)\\(\d', title).group(1)
                     stock_code = re.search('(\d+)', title).group(1)
                     price = soup.select(f'#contents > div.table_style01 > table > tbody > tr:nth-of-type({str(idx)}) > td.text_r.txt_number')[0].get_text()
+                    price = price.replace(',', '')
                     opinion = soup.select(f'#contents > div.table_style01 > table > tbody > tr:nth-of-type({str(idx)}) > td:nth-of-type(4)')[0].get_text().strip()
                     writer = soup.select(f'#contents > div.table_style01 > table > tbody > tr:nth-of-type({str(idx)}) > td:nth-of-type(5)')[0].get_text()
                     source = soup.select(f'#contents > div.table_style01 > table > tbody > tr:nth-of-type({str(idx)}) > td:nth-of-type(6)')[0].get_text()
@@ -74,10 +78,10 @@ class CompareRP:
                     report_id = url[-6:]
                     self.pdf_to_html(report_id)
                     row = [report_id, stock_code, title, price, opinion, writer, source, url, ''.join(list(self.contents)[:]), date]
-                    report.insert_new(row)  #db에 제대로 들어가는지 확인 필요
+                    report.insert_new(self.sess, row)  #db에 제대로 들어가는지 확인 필요
                 else:
                     pass
         return report.get_context(self.sess, code)[0]
         
-Compare = CompareRP()
+# compareRP = Compare()
 # Compare.get_report('005930')  #삼성전자   

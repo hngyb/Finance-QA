@@ -33,7 +33,10 @@ class View:
         data = json.dumps(query)
 
         res = requests.post("http://127.0.0.1:8000/api/question", headers=header, data=data)
-        res = json.loads(res.text)["ans"]
+        kb_res = json.loads(res.text)["kb_ans"]
+        ko_res = json.loads(res.text)["ko_ans"]
+
+        res = "KBAlbert: " + kb_res + "\nKobert: " + ko_res
         
         return res
 

@@ -16,8 +16,8 @@ def get_source(db: Session, code):
 def get_url(db: Session, code):
     return db.query(models.Report.url).filter(models.Report.stock_code == code).order_by(models.Report.report_date.desc()).first()
 
-def insert_new(db: Session, row):  # compare.py에서 사용되는 함수 / db에 제대로 들어가는지 확인 필요
-    new = models.Report(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8])
+def insert_new(db: Session, row):
+    new = models.Report(report_id = row[0], stock_code = row[1], title = row[2], price = row[3], opinion = row[4], writer = row[5], source = row[6], url = row[7], contents = row[8], report_date = row[9])
     db.add(new)
     db.commit()
 

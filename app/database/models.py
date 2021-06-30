@@ -6,4 +6,5 @@ class Query(BaseModel):
 
 class Answer(BaseModel):
     question: str = None
-    ans: str = None
+    kb_ans: str = None
+    ko_ans: str= None
