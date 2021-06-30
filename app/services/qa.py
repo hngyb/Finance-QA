@@ -2,16 +2,21 @@ from numpy.core.fromnumeric import argmax
 import torch
 from transformers import AlbertForQuestionAnswering
 from app.models.kbalbert.tokenization_kbalbert import KbAlbertCharTokenizer
+from transformers import BertForQuestionAnswering
+from app.models.kobert.tokenization_kobert import KoBertTokenizer
 from collections import OrderedDict
 
-MODEL_PATH = "app/models/kbalbert"
+KB_MODEL_PATH = "app/models/kbalbert"
+kb_tokenizer = KbAlbertCharTokenizer.from_pretrained(KB_MODEL_PATH)
+kb_model = AlbertForQuestionAnswering.from_pretrained(KB_MODEL_PATH)
 
-tokenizer = KbAlbertCharTokenizer.from_pretrained(MODEL_PATH)
-model = AlbertForQuestionAnswering.from_pretrained(MODEL_PATH)
+KO_MODEL_PATH = "app/models/kobert"
+ko_tokenizer = KoBertTokenizer.from_pretrained(KO_MODEL_PATH)
+ko_model = BertForQuestionAnswering.from_pretrained(KO_MODEL_PATH)
 
 
 class FinanceQA:
-    def __init__(self, model: model, tokenizer: tokenizer):
+    def __init__(self, model: kb_model, tokenizer: kb_tokenizer):
         self.model = model
         self.tokenizer = tokenizer
         self.max_len = self.model.config.max_position_embeddings
@@ -80,7 +85,8 @@ class FinanceQA:
         return self.tokenizer.convert_tokens_to_string(self.tokenizer.convert_ids_to_tokens(input_ids))
 
 
-QAModel = FinanceQA(model, tokenizer)
+KbQAModel = FinanceQA(kb_model, kb_tokenizer)
+KoQAModel = FinanceQA(ko_model, ko_tokenizer)
 
 
 
