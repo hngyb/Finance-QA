@@ -1,1 +1,1 @@
-DB_URL = "mysql+pymysql://root:3611@localhost/qa_api?charset=utf8"
+DB_URL = "mysql+pymysql://user:pwd@localhost/qa_api?charset=utf8"
