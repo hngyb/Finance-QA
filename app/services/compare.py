@@ -10,9 +10,6 @@ from selenium import webdriver
 from app.database.conn import db
 import app.database.report as report
 
-
-
-
 DRIVER_PATH = 'app/chromedriver'
 
 class Compare:
@@ -49,7 +46,11 @@ class Compare:
         self.contents = re.sub('[\n ]{4,}', '\n', self.contents)
 
     def get_report(self, code):
-        sdate = report.get_recent_date(self.sess, code)[0].strftime("%Y-%m-%d")
+        try:
+            sdate = report.get_recent_date(self.sess, code)[0].strftime("%Y-%m-%d")
+        except:
+            sdate = '2020-11-26'  #DB 크롤링 시작 일자
+
         edate = datetime.today().strftime("%Y-%m-%d")
 
         driver = webdriver.Chrome(DRIVER_PATH)
@@ -58,30 +59,29 @@ class Compare:
         driver.get(recent_url)
         soup = BeautifulSoup(driver.page_source, 'html.parser')
         driver.close()
+        try:
+            recent_date = sorted([date.text for date in soup.find_all('td', class_= 'first txt_number')])[-1]    
 
-        recent_date = sorted([date.text for date in soup.find_all('td', class_= 'first txt_number')])[-1]    
-
-        if recent_date != sdate :
-            for idx in range(1, len(soup.select('#contents > div.table_style01 > table > tbody > tr'))+1):
-                date = soup.select(f'#contents > div.table_style01 > table > tbody > tr:nth-of-type({str(idx)}) > td.first.txt_number')[0].get_text()
-                if recent_date == date:
-                    title = soup.select(f'#contents > div.table_style01 > table > tbody > tr:nth-of-type({str(idx)}) > td.text_l > div > div > strong')[0].get_text() 
-                    company = re.search('(.*)\\(\d', title).group(1)
-                    stock_code = re.search('(\d+)', title).group(1)
-                    price = soup.select(f'#contents > div.table_style01 > table > tbody > tr:nth-of-type({str(idx)}) > td.text_r.txt_number')[0].get_text()
-                    price = price.replace(',', '')
-                    opinion = soup.select(f'#contents > div.table_style01 > table > tbody > tr:nth-of-type({str(idx)}) > td:nth-of-type(4)')[0].get_text().strip()
-                    writer = soup.select(f'#contents > div.table_style01 > table > tbody > tr:nth-of-type({str(idx)}) > td:nth-of-type(5)')[0].get_text()
-                    source = soup.select(f'#contents > div.table_style01 > table > tbody > tr:nth-of-type({str(idx)}) > td:nth-of-type(6)')[0].get_text()
-                    url = base_url + soup.select(f'#contents > div.table_style01 > table > tbody > tr:nth-of-type({str(idx)}) > td:nth-of-type(9) > div > a')[0]['href']
-                    self.download_pdf(url)
-                    report_id = url[-6:]
-                    self.pdf_to_html(report_id)
-                    row = [report_id, stock_code, title, price, opinion, writer, source, url, ''.join(list(self.contents)[:]), date]
-                    report.insert_new(self.sess, row)  #db에 제대로 들어가는지 확인 필요
-                else:
-                    pass
-        return report.get_context(self.sess, code)[0]
-        
-# compareRP = Compare()
-# Compare.get_report('005930')  #삼성전자   
+            if recent_date != sdate :
+                for idx in range(1, len(soup.select('#contents > div.table_style01 > table > tbody > tr'))+1):
+                    date = soup.select(f'#contents > div.table_style01 > table > tbody > tr:nth-of-type({str(idx)}) > td.first.txt_number')[0].get_text()
+                    if recent_date == date:
+                        title = soup.select(f'#contents > div.table_style01 > table > tbody > tr:nth-of-type({str(idx)}) > td.text_l > div > div > strong')[0].get_text() 
+                        company = re.search('(.*)\\(\d', title).group(1)
+                        stock_code = re.search('(\d+)', title).group(1)
+                        price = soup.select(f'#contents > div.table_style01 > table > tbody > tr:nth-of-type({str(idx)}) > td.text_r.txt_number')[0].get_text()
+                        price = price.replace(',', '')
+                        opinion = soup.select(f'#contents > div.table_style01 > table > tbody > tr:nth-of-type({str(idx)}) > td:nth-of-type(4)')[0].get_text().strip()
+                        writer = soup.select(f'#contents > div.table_style01 > table > tbody > tr:nth-of-type({str(idx)}) > td:nth-of-type(5)')[0].get_text()
+                        source = soup.select(f'#contents > div.table_style01 > table > tbody > tr:nth-of-type({str(idx)}) > td:nth-of-type(6)')[0].get_text()
+                        url = base_url + soup.select(f'#contents > div.table_style01 > table > tbody > tr:nth-of-type({str(idx)}) > td:nth-of-type(9) > div > a')[0]['href']
+                        self.download_pdf(url)
+                        report_id = url[-6:]
+                        self.pdf_to_html(report_id)
+                        row = [report_id, stock_code, title, price, opinion, writer, source, url, ''.join(list(self.contents)[:]), date]
+                        report.insert_new(self.sess, row) 
+                    else:
+                        pass
+            return report.get_context(self.sess, code)[0]
+        except:
+            return False
